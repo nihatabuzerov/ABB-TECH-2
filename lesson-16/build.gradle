@@ -1,0 +1,111 @@
+plugins {
+    id 'java'
+    id 'war'
+}
+
+group = "org.abb_tech"
+version = "1.0.0"
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+ext {
+    tomcatHome = "/Users/javidanhatamov/Desktop/AbbTech/apache-tomcat-11.0.14"
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    set('jakartaVersion', '6.1.0-M2')
+    set('jUnitVersion', '5.10.2')
+}
+
+dependencies {
+        // test üçün
+        testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
+        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+        testImplementation 'org.mockito:mockito-core:5.5.0'
+
+        // Jakarta Servlet API
+        implementation 'jakarta.servlet:jakarta.servlet-api:6.1.0'
+    implementation 'jakarta.servlet:jakarta.servlet-api:6.1.0'
+
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
+
+    // Align all JUnit 5 & Platform versions
+    testImplementation platform("org.junit:junit-bom:${jUnitVersion}")
+    // JUnit Jupiter (API + engine)
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // Mockito
+    testImplementation 'org.mockito:mockito-core:5.20.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.20.0'
+    // Explicitly add JUnit Platform launcher (fixes that exact error on some setups)
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    compileOnly group: 'jakarta.servlet', name: 'jakarta.servlet-api', version: "${jakartaVersion}"
+
+}
+
+test {
+    useJUnitPlatform()
+}
+
+
+jar {
+    manifest {
+        attributes(
+                'Main-Class': 'org.abb_tech.lesson2.Calculator'
+        )
+    }
+}
+
+
+tasks.named('war', War) {
+    archiveFileName.set("my-servlet-app.war")
+}
+
+
+tasks.register("firstTask") {
+    print("Hello Gradle Task")
+}
+
+
+
+
+// Stop Tomcat
+def stopTomcat = tasks.register('stopTomcat', Exec) {
+    workingDir tomcatHome
+    commandLine "${tomcatHome}/bin/shutdown.sh"
+    ignoreExitValue = true
+}
+
+// Copy built WAR
+def copyWarToTomcat = tasks.register('copyWarToTomcat', Copy) {
+    dependsOn tasks.named('war')
+    from("$buildDir/libs")
+    include("my-servlet-app.war")
+    into("$tomcatHome/webapps")
+    mustRunAfter stopTomcat
+}
+
+// Start Tomcat
+def startTomcat = tasks.register('startTomcat', Exec) {
+    workingDir tomcatHome
+    commandLine "${tomcatHome}/bin/startup.sh"
+    mustRunAfter copyWarToTomcat
+}
+
+
+tasks.register('deployToTomcat') {
+    dependsOn stopTomcat, copyWarToTomcat, startTomcat
+    doLast {
+        println "Deployment to Tomcat completed successfully!"
+    }
+}
+
+
